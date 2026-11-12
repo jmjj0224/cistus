@@ -229,7 +229,7 @@ function trunkFace(t, y, wantX, wantZ) {
   const pos = new THREE.Vector3(Math.sin(bth) * r, y, Math.cos(bth) * r).applyMatrix4(t.m).addScaledVector(best, 0.012);
   return { pos, normal: best };
 }
-const exitGate = { rope: null, light: null, open: false, t: 0 };
+const exitGate = { rope: null, light: null, beam: null, open: false, t: 0 };
 function buildExitLight() {
   const c = document.createElement('canvas'); c.width = 64; c.height = 96;
   const g = c.getContext('2d');
@@ -242,11 +242,25 @@ function buildExitLight() {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: t, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0 }));
   m.scale.set(12, 17, 1); m.visible = false; m.renderOrder = 5; scene.add(m);
   exitGate.light = m;
+  // 하늘까지 솟은 흰 빛기둥: 안개를 무시하고 그려서 숲 어디서든 나무 사이로 보여요.
+  const c2 = document.createElement('canvas'); c2.width = 32; c2.height = 128;
+  const g2 = c2.getContext('2d');
+  const hx = g2.createLinearGradient(0, 0, 32, 0);
+  hx.addColorStop(0, 'rgba(255,255,240,0)'); hx.addColorStop(0.3, 'rgba(255,255,245,0.7)');
+  hx.addColorStop(0.5, 'rgba(255,255,255,1)'); hx.addColorStop(0.7, 'rgba(255,255,245,0.7)'); hx.addColorStop(1, 'rgba(255,255,240,0)');
+  g2.fillStyle = hx; g2.fillRect(0, 0, 32, 128);
+  g2.globalCompositeOperation = 'destination-in';
+  const vy = g2.createLinearGradient(0, 0, 0, 128);
+  vy.addColorStop(0, 'rgba(0,0,0,0)'); vy.addColorStop(0.3, 'rgba(0,0,0,1)'); vy.addColorStop(1, 'rgba(0,0,0,1)');
+  g2.fillStyle = vy; g2.fillRect(0, 0, 32, 128);
+  const beam = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c2), transparent: true, depthWrite: false, depthTest: false, fog: false, opacity: 0 }));
+  beam.scale.set(10, 80, 1); beam.visible = false; beam.renderOrder = 6; scene.add(beam); // 나무와 잎에 가리지 않게 맨 위에 그려요
+  exitGate.beam = beam;
 }
 function openExit() {
   if (exitGate.open) return;
   exitGate.open = true; exitGate.t = 0;
-  exitGate.rope.visible = false; exitGate.light.visible = true;
+  exitGate.rope.visible = false; exitGate.light.visible = true; exitGate.beam.visible = true;
 }
 // 흰 빛은 늘 같은 거리만큼 앞에 있어서, 아무리 걸어도 가까워지지 않아요.
 function updateExit(dt) {
@@ -256,6 +270,12 @@ function updateExit(dt) {
   m.position.set(XC, 5.2, z);
   m.rotation.y = Math.atan2(player.x - XC, player.z - z);
   m.material.opacity = smooth(exitGate.t / 4) * (0.9 + 0.1 * Math.sin(S.clock * 1.3));
+  // 빛기둥은 숲 밖 길 끝에 서 있어요. 길에 들어서면 빛과 함께 늘 같은 거리만큼 앞에 있어요.
+  const b = exitGate.beam, bz = z - 6;
+  b.position.set(XC, 40, bz);
+  b.rotation.y = Math.atan2(player.x - XC, player.z - bz);
+  b.material.opacity = smooth(exitGate.t / 3) * (0.92 + 0.08 * Math.sin(S.clock * 0.9));
+  b.scale.x = 10 + Math.sin(S.clock * 0.7) * 0.8;
 }
 function buildWorld() {
   // --- 바닥: 4m 타일. 흙길 / 햇빛 든 풀 / 풀과 이끼
@@ -502,7 +522,22 @@ function emitAsh(pos, hot) {
 }
 
 // ------------------------------------------------------------------ 괴물 (거리에 따라 그림을 바꾸는 평면)
-const monster = { mesh: null, active: false, stage: 0, x: 0, z: 0, flick: 0, lurch: 0, moving: false };
+const monster = { mesh: null, active: false, stage: 0, x: 0, z: 0, flick: 0, lurch: 0, moving: false, wasSeen: true, crept: 0 };
+const _frus = new THREE.Frustum(), _pm = new THREE.Matrix4(), _sph = new THREE.Sphere();
+// 화면 안에 있고, 안개에 묻히지 않았고, 나무줄기에 가리지 않으면 "보인다"
+function monsterSeen(d) {
+  if (d > CFG.monster.fogHide) return false;
+  _pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); _frus.setFromProjectionMatrix(_pm);
+  _sph.center.set(monster.x, CFG.monster.bodyHeight * 0.55, monster.z); _sph.radius = 0.7;
+  if (!_frus.intersectsSphere(_sph)) return false;
+  const ax = player.x, az = player.z, bx = monster.x - ax, bz = monster.z - az, L2 = bx * bx + bz * bz;
+  for (const t of trees) {
+    const u = clamp(((t.x - ax) * bx + (t.z - az) * bz) / L2, 0, 1);
+    if (u < 0.05 || u > 0.92) continue;
+    if (Math.hypot(ax + bx * u - t.x, az + bz * u - t.z) < t.r * 0.9) return false; // 줄기가 한가운데를 가림
+  }
+  return true;
+}
 function buildMonster() {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), bas({ map: TEX.monster_stage0, alphaTest: 0.5, side: THREE.DoubleSide }));
   m.visible = false; scene.add(m); monster.mesh = m;
@@ -578,8 +613,9 @@ function spawnWitness() {
   if (S.state !== 'play' || witness.state !== 'none') return;
   // 남자 등 뒤에. 나무와 겹치지 않고 구역 안인 자리를 찾아요.
   let found = null;
-  for (const dist of [CFG.witness.spawnDist, CFG.witness.spawnDist - 1.5, CFG.witness.spawnDist + 2]) {
-    for (const da of [Math.PI, Math.PI - 0.5, Math.PI + 0.5, Math.PI - 1, Math.PI + 1, 2, -2, 1.5, -1.5]) {
+  // 반드시 남자 가까이, 등 뒤 쪽에서 찾아요. 등 뒤가 막혀 있으면 옆, 그래도 막히면 조금 더 먼 자리.
+  for (const dist of [CFG.witness.spawnDist, CFG.witness.spawnDist + 1, CFG.witness.spawnDist - 0.7, CFG.witness.spawnDist + 2.5]) {
+    for (const da of [Math.PI, Math.PI - 0.35, Math.PI + 0.35, Math.PI - 0.7, Math.PI + 0.7, Math.PI - 1.1, Math.PI + 1.1, 1.6, -1.6]) {
       const a = player.yaw + da;
       const x = player.x - Math.sin(a) * dist, z = player.z - Math.cos(a) * dist;
       if (Math.hypot(x, z) < 27 && isFree(x, z, 0.6)) { found = { x, z }; break; }
@@ -748,7 +784,7 @@ post.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial(
       }
       float l = dot(c, vec3(0.299, 0.587, 0.114));
       vec3 y = vec3(1.1, 0.9, 0.2) * pow(l, 0.9) * 1.18;
-      float wh = smoothstep(0.75, 0.98, min(c.r, min(c.g, c.b))); // 흰 빛은 노랗게 물들이지 않아요
+      float wh = smoothstep(0.6, 0.9, min(c.r, min(c.g, c.b))); // 흰 빛은 노랗게 물들이지 않아요
       c = mix(c, y, uYellow * (1.0 - wh));
       float d = distance(vUv, vec2(0.5));
       c *= 1.0 - uVig * smoothstep(0.35, 0.85, d);
@@ -1078,7 +1114,7 @@ function spawnMonster() {
     }
     if (found) break;
   }
-  monster.x = x; monster.z = z; monster.active = true; monster.stage = 0;
+  monster.x = x; monster.z = z; monster.active = true; monster.stage = 0; monster.wasSeen = true; monster.crept = 0;
   setMonsterStage(0); monster.mesh.visible = true;
   audio.startMonster(x, 1.6, z);
 }
@@ -1086,12 +1122,20 @@ function updateMonster(dt) {
   if (!monster.active) return;
   const dx = player.x - monster.x, dz = player.z - monster.z, d = Math.hypot(dx, dz);
   const M = CFG.monster;
-  monster.moving = d > M.stopDist && !S.inCorridor; // 나가는 길로는 따라오지 않아요
-  if (monster.moving) {
-    const sp = CFG.player.walk * M.speedRatio * dt;
-    monster.x += (dx / d) * sp; monster.z += (dz / d) * sp;
+  // 남자가 보고 있으면 꼼짝 않고, 안개에 가려 안 보이거나 다른 곳을 보면 그 사이에 다가와요.
+  const seen = monsterSeen(d);
+  if (seen && !monster.wasSeen && monster.crept > 1.5) { // 안 보는 사이 다가와 있었으면 돌아보는 순간 움찔
+    S.shake = Math.max(S.shake, 0.7); audio.rustle(); monster.lurch = Math.max(monster.lurch, 0.6);
   }
-  if (S.state === 'choice' && d > 27 && !S.inCorridor && player.z > -26) { // 멀리 달아나면 시야 밖에서 다시 나타나요
+  if (seen) monster.crept = 0;
+  monster.wasSeen = seen;
+  monster.moving = !seen && d > M.stopDist && !S.inCorridor; // 나가는 길로는 따라오지 않아요
+  if (monster.moving) {
+    const sp = CFG.player.walk * M.speedRatio * dt * (d > 16 ? 1.5 : 1);
+    monster.x += (dx / d) * sp; monster.z += (dz / d) * sp;
+    monster.crept += sp;
+  }
+  if (S.state === 'choice' && d > 27 && !seen && !S.inCorridor && player.z > -26) { // 멀리 달아나면 시야 밖에서 다시 나타나요
     const a = player.yaw + Math.PI + rr(-0.7, 0.7);
     monster.x = player.x - Math.sin(a) * 18; monster.z = player.z - Math.cos(a) * 18;
   }
@@ -1122,7 +1166,7 @@ function startVeil() {
   setState('veil'); S.ending = 'approach';
   S.veilP = 0; S.veilIntro = 0; S.veilTorn = 0; S.wingSound = false; S.sqSound = false; S.swallowPlaying = false;
   S.cut = true; S.shake = 1.5;
-  monster.active = false; monster.mesh.visible = false; exitGate.light.visible = false;
+  monster.active = false; monster.mesh.visible = false; exitGate.light.visible = false; exitGate.beam.visible = false;
   audio.stageHit(); audio.stopMonster(1.5); audio.setWet(true); audio.setBreath(1);
   HUD.black.visible = true; rect(HUD.black, 0, 0, W, H);
   el.prompt.classList.remove('on');
@@ -1530,7 +1574,7 @@ function update(dt) {
     placeCamera(); updateMonster(0); updateExit(dt);
     if (!S.fell && t > 0.9) { S.fell = true; audio.thud(); audio.setBreath(0); fadeTo(1, 0.25); }
     if (t > 1.5) {
-      S.cut = true; monster.mesh.visible = false; monster.active = false; exitGate.light.visible = false;
+      S.cut = true; monster.mesh.visible = false; monster.active = false; exitGate.light.visible = false; exitGate.beam.visible = false;
       HUD.black.visible = true; rect(HUD.black, 0, 0, W, H);
       setState('runEnd'); fadeTo(0, 0.5);
     }

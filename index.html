@@ -28,30 +28,30 @@
   #stage.touch.playing #touch { display: block; }
   #joy, #joyGhost { position: absolute; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; border: 2px solid rgba(242, 236, 210, 0.5); background: rgba(0, 0, 0, 0.2); pointer-events: none; }
   #joy { display: none; }
-  #joyGhost { left: max(92px, 13%); bottom: 22%; top: auto; margin: 0 0 -62px -62px; opacity: 0.55; display: flex; align-items: center; justify-content: center; color: #f2ecd2; }
+  #joyGhost { left: max(92px, 13%); bottom: 40%; top: auto; margin: 0 0 -62px -62px; opacity: 0.55; display: flex; align-items: center; justify-content: center; color: #f2ecd2; }
   #knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(242, 236, 210, 0.55); }
   #fireBtn { position: absolute; right: max(14px, 3%); bottom: 24%; width: 92px; height: 92px; border-radius: 50%; border: 2px solid rgba(255, 233, 168, 0.75); background: rgba(0, 0, 0, 0.28); color: #ffe9a8; display: flex; align-items: center; justify-content: center; font-size: 24px; }
   #fireBtn.on { background: rgba(255, 196, 80, 0.5); transform: scale(0.94); }
   #pauseBtn { position: absolute; right: max(10px, 2%); top: max(10px, 4%); width: 46px; height: 46px; border-radius: 8px; border: 2px solid rgba(242, 236, 210, 0.4); background: rgba(0, 0, 0, 0.25); color: #f2ecd2; display: flex; align-items: center; justify-content: center; font-size: 16px; letter-spacing: 2px; }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; display: block; }
-  #ui { position: absolute; inset: 0; pointer-events: none; font-size: calc(var(--k, 2) * 12px); line-height: 1.7; }
+  #ui { position: absolute; inset: 0; pointer-events: none; font-size: calc(var(--k, 2) * 12px); line-height: 1.7; word-break: keep-all; overflow-wrap: break-word; }
   .outline { text-shadow: 0 0 2px #000, calc(var(--k,2)*1px) calc(var(--k,2)*1px) 0 #000, calc(var(--k,2)*-1px) calc(var(--k,2)*1px) 0 #000, calc(var(--k,2)*1px) calc(var(--k,2)*-1px) 0 #000, calc(var(--k,2)*-1px) calc(var(--k,2)*-1px) 0 #000; }
 
   #sub { position: absolute; left: 9%; right: 9%; bottom: 6%; text-align: center; }
   #sub div { opacity: 0; transition: opacity 0.9s; word-break: keep-all; }
   #sub div.on { opacity: 1; }
 
-  #prompt { position: absolute; left: 0; right: 0; top: 58%; text-align: center; opacity: 0; transition: opacity 0.25s; color: #ffe9a8; }
+  #prompt { position: absolute; left: 12%; right: 12%; top: 58%; text-align: center; opacity: 0; transition: opacity 0.25s; color: #ffe9a8; }
   #prompt.on { opacity: 1; }
 
-  #title { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 5%; text-align: center; transition: opacity 0.8s; }
+  #title { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding: 0 9% 5%; box-sizing: border-box; text-align: center; transition: opacity 0.8s; }
   #title .big { font-size: 1.5em; }
   #title .small { opacity: 0.85; font-size: 0.8em; }
   #title.off { opacity: 0; }
   .blink { animation: blink 1.4s steps(2, start) infinite; }
   @keyframes blink { to { visibility: hidden; } }
 
-  #pause { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); text-align: center; }
+  #pause { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 0 10%; box-sizing: border-box; background: rgba(0,0,0,0.6); text-align: center; }
   #pause.on { display: flex; }
 
   #scroll { position: absolute; inset: 0; overflow: hidden; display: none; }

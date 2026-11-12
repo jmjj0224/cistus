@@ -88,8 +88,8 @@ export const TEXT = {
   restart: 'R 키 : 처음으로',
   // 스마트폰용 문구
   startTouch: '화면을 눌러서 시작',
-  controlsTouch: '화면 왼쪽을 밀면 이동 · 화면 오른쪽을 밀면 시점 · 매미 앞에서 불 버튼을 길게',
-  burnPromptTouch: '불 버튼을 길게',
+  controlsTouch: '왼쪽 화면을 밀면 이동 · 오른쪽 화면을 밀면 시점 전환<br>매미 앞에서 불 버튼을 길게 누르기',
+  burnPromptTouch: '불 버튼을 길게 누르기',
   resumeTouch: '화면을 누르면 계속',
   shakeOnTouch: '화면 흔들림 줄이기 — 꺼짐 (누르면 바뀜)',
   shakeOffTouch: '화면 흔들림 줄이기 — 켜짐 (누르면 바뀜)',
